@@ -1,4 +1,8 @@
-import { Injectable, NotFoundException } from "@nestjs/common";
+import {
+  Injectable,
+  ForbiddenException,
+  NotFoundException,
+} from "@nestjs/common";
 import { PrismaService } from "../prisma/prisma.service.js";
 
 import type { Post } from "./interfaces/post.interface.js";
@@ -34,12 +38,16 @@ export class PostsService {
   }
 
   async update(id: string, updatePostDto: UpdatePostDto): Promise<Post> {
-    await this.findOne(id);
+    const post = await this.findOne(id);
+
+    if (post.isSeed) {
+      throw new ForbiddenException("기본 게시글은 수정할 수 없습니다.");
+    }
 
     const { title, content } = updatePostDto;
 
     return this.prisma.post.update({
-      where: { id },
+      where: { id, isSeed: false },
       data: {
         ...(title !== undefined ? { title } : {}),
         ...(content !== undefined ? { content } : {}),
@@ -48,10 +56,14 @@ export class PostsService {
   }
 
   async remove(id: string): Promise<Post> {
-    await this.findOne(id);
+    const post = await this.findOne(id);
+
+    if (post.isSeed) {
+      throw new ForbiddenException("기본 게시글은 삭제 할 수 없습니다.");
+    }
 
     return this.prisma.post.delete({
-      where: { id },
+      where: { id, isSeed: false },
     });
   }
 }
